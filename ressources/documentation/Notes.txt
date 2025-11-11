@@ -1,0 +1,5 @@
+Remarques :
+- On doit intégrer les questions dans le prompt directement
+- Ajouter une question -> 'How Do you feel today' ?
+- Le but est d'éviter au max le biais humain -> biais lié à la traduction également -> On fait tout en Français !
+- Ajouter un bouton : Choisir ta langue 
