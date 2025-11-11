@@ -1,0 +1,100 @@
+# =========================================================
+# 🔐 ENVIRONNEMENTS ET VARIABLES SENSIBLES
+# =========================================================
+# Ignore tous les fichiers .env dans tout le projet (backend, frontend, etc.)
+**/.env
+**/.env.*
+**/.venv/
+**/venv/
+**/.env.bak/
+
+# =========================================================
+# 🧠 PYTHON / BACKEND
+# =========================================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs et bases temporaires
+*.log
+*.sqlite3
+*.db
+
+# Fichiers de test et cache pytest
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Build et distributions
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================================================
+# 🖥️ FRONTEND / STREAMLIT / NODE
+# =========================================================
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Streamlit cache et config
+.streamlit/
+.cache/
+
+# Frontend build (si tu build une app web)
+frontend/build/
+frontend/dist/
+
+# =========================================================
+# 📄 DOCUMENTATION / NOTEBOOKS
+# =========================================================
+.ipynb_checkpoints/
+*.pdf
+*.docx
+*.pptx
+
+# =========================================================
+# ⚙️ DOCKER / COMPOSE
+# =========================================================
+*.pid
+*.tar
+*.sock
+
+# Ignore les fichiers d'environnement Docker
+docker-compose.override.yml
+.env.docker
+
+# =========================================================
+# 🧰 IDE / OUTILS
+# =========================================================
+.vscode/
+.idea/
+.spyproject/
+*.swp
+*.swo
+
+# =========================================================
+# 📂 FICHIERS SYSTEME / TEMPORAIRES
+# =========================================================
+.DS_Store
+Thumbs.db
+~$*
+*.tmp
+*.bak
+
+# =========================================================
+# 💾 DONNÉES LOCALES
+# =========================================================
+*.csv
+*.parquet
+*.xlsx
+*.jsonl
+*.h5
+*.pkl
+*.zip
+*.gz
+*.tar.gz
