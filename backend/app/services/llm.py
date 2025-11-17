@@ -1,104 +1,80 @@
-
 from __future__ import annotations
-from typing import List, Dict, Any
+from typing import Dict, Any, Optional
 import httpx
-# from . import typing as _t  # optional placeholder for future types
 from ..core.settings import settings
 
-SYSTEM_PROMPT = (
-    "Tu es un assistant psychométrique prudent. "
-    "Tu aides à synthétiser un profil de personnalité à partir d'un questionnaire. "
-    "Tu évites tout diagnostic médical. "
-    "Tu synthétises en sections: Forces, Points d'attention, Style de résolution de problèmes, "
-    "Conseils pratiques personnalisés."
-)
 
 class LLMClient:
-    def __init__(self, base_url: str, api_key: str, provider: str = "OPENAI"):
-        self.base_url = base_url.rstrip('/')
+    def __init__(self, base_url: str, api_key: str):
+        # Exemple : base_url = "https://api.openai.com/v1"
+        self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self.provider = provider.upper()
+        if not self.api_key:
+            raise RuntimeError("PROVIDER_API_KEY / OPENAI_API_KEY is missing or empty")
 
-    async def chat(self, messages: List[Dict[str, str]], model: str = "gpt-4o-mini", temperature: float = 0.3) -> str:
-        headers = {}
-        url = ""
-        payload: Dict[str, Any] = {}
-        if self.provider == "OPENAI":
-            url = f"{self.base_url}/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": model,
-                "temperature": temperature,
-                "messages": messages,
-            }
+    async def ask(self, question: str, personality: Optional[str] = None) -> str:
+        """
+        Tu lui passes une question (string) et éventuellement une description de personnalité,
+        il te renvoie une réponse construite en tenant compte de cette personnalité.
+        """
+        url = f"{self.base_url}/chat/completions"
+
+        # 1️⃣ Construire un system prompt qui intègre la personnalité
+        if personality:
+            system_content = (
+                "Tu es un assistant IA spécialisé dans l'adaptation de tes réponses selon le profil psychologique de l'utilisateur. "
+                "Tu DOIS IMPÉRATIVEMENT respecter et incarner la personnalité décrite ci-dessous dans CHAQUE aspect de ta réponse.\n\n"
+                
+                "PROFIL DE PERSONNALITÉ DE L'UTILISATEUR :\n"
+                f"{personality}\n\n"
+                
+                "INSTRUCTIONS STRICTES :\n"
+                "1. ADAPTE ton vocabulaire, ton niveau de détail et ta structure de réponse selon ce profil\n"
+                "2. UTILISE des exemples, métaphores et références qui résonnent avec cette personnalité\n"
+                "3. AJUSTE ton ton émotionnel (chaleureux, analytique, direct, encourageant...) selon le profil\n"
+                "4. STRUCTURE tes réponses selon les préférences cognitives du profil (concret vs abstrait, visuel vs verbal, etc.)\n"
+                "5. ANTICIPE les besoins implicites liés à cette personnalité\n\n"
+                
+                "Ta réponse doit donner l'impression d'avoir été écrite PAR quelqu'un partageant cette personnalité "
+                "ou POUR quelqu'un avec cette personnalité. Sois authentique, cohérent et bienveillant."
+            )        
         else:
-            # Fallback generic OpenAI-compatible
-            url = f"{self.base_url}/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": model,
-                "temperature": temperature,
-                "messages": messages,
-            }
+            system_content = (
+                "Tu es un assistant IA utile. "
+                "Tu réponds en français, de manière claire, concrète et bienveillante."
+            )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload: Dict[str, Any] = {
+            "model": "gpt-4o-mini",  # adapte si besoin
+            "temperature": 0.5,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_content,
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "Question de l'utilisateur : "
+                        f"{question}"
+                    ),
+                },
+            ],
+        }
 
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
-            # OpenAI-compatible schema
             return data["choices"][0]["message"]["content"]
 
-    async def analyze_answers(self, answers: Dict[str, Any]) -> str:
-        # Minimal orchestrator: build a compact prompt with derived features
-        # Example: simple Likert aggregation (Big Five lite). Replace with your instrument.
-        traits = {
-            "ouverture": 0.0,
-            "conscienciosite": 0.0,
-            "extraversion": 0.0,
-            "agreabilite": 0.0,
-            "nevrosisme": 0.0,
-        }
-        # naive aggregation
-        for qid, val in answers.items():
-            try:
-                v = float(val)
-            except Exception:
-                v = 0.0
-            # toy mapping by prefix
-            if str(qid).startswith("O"):
-                traits["ouverture"] += v
-            elif str(qid).startswith("C"):
-                traits["conscienciosite"] += v
-            elif str(qid).startswith("E"):
-                traits["extraversion"] += v
-            elif str(qid).startswith("A"):
-                traits["agreabilite"] += v
-            elif str(qid).startswith("N"):
-                traits["nevrosisme"] += v
-
-        user_summary = "\n".join([f"- {k}: {round(v,2)}" for k,v in traits.items()])
-
-        user_prompt = (
-            f"Voici un résumé chiffré (0-5 par item, plus haut = plus marqué) :\n{user_summary}\n\n"
-            "Rédige un profil concis (<= 250 mots) structuré en 4 sections avec des puces. "
-            "Utilise un ton positif, concret, et actionnable. "
-            "N'ajoute pas d'avertissements médicaux."
-        )
-
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ]
-        return await self.chat(messages)
 
 llm_client = LLMClient(
     base_url=settings.PROVIDER_BASE_URL,
     api_key=settings.PROVIDER_API_KEY,
-    provider=settings.PROVIDER,
 )
