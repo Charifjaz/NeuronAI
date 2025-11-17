@@ -251,7 +251,7 @@ def call_backend_ask(api_base: str, message: str, answers: Dict[str, Any]) -> st
     """Appelle le backend /ask avec le message et les réponses validées."""
     payload = {"message": message, "answers": answers}
     try:
-        r = httpx.post(f"{api_base.rstrip('/')}/ask", json=payload, timeout=120.0)
+        r = httpx.post(f"{api_base.rstrip('/')}/assessments", json=payload, timeout=120.0)
         r.raise_for_status()
         data = r.json()
         return data.get("reply", "(Aucune réponse)")
