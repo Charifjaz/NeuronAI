@@ -1,192 +1,138 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildPrompt } from '../services/api';
-import '../styles/ProfilePage.css';
+import { createProfile } from '../services/api';
+import { QUESTIONS } from "../services/api";
+import './ProfilePage.css';
 
-function ProfilePage({
-  questions,
-  answersDraft,
-  answersValidated,
-  isValidated,
-  onAnswerChange,
-  onValidateProfile,
-  onEditProfile,
-}) {
+function ProfilePage() {
   const navigate = useNavigate();
+  const [answers, setAnswers] = useState({});
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onValidateProfile();
-    navigate('/');
+  const handleAnswer = (questionId, value) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
   };
 
-  const renderQuestionInput = (question) => {
-    const { id, type, label, placeholder, scale_min, scale_max } = question;
-    const value = answersDraft[id] || '';
+  const handleMultipleAnswer = (questionId, option) => {
+    setAnswers(prev => {
+      const current = prev[questionId] || [];
+      const newValue = current.includes(option)
+        ? current.filter(o => o !== option)
+        : [...current, option];
+      return { ...prev, [questionId]: newValue };
+    });
+  };
 
-    switch (type) {
-      case 'textarea':
-        return (
-          <div key={id} className="form-group">
-            <label htmlFor={id} className="form-label">
-              {label}
-            </label>
-            <textarea
-              id={id}
-              value={value}
-              onChange={(e) => onAnswerChange(id, e.target.value)}
-              placeholder={placeholder}
-              className="form-textarea"
-              rows={4}
-            />
-          </div>
-        );
+  const canGoNext = () => {
+    const question = QUESTIONS[currentQuestion];
+    const answer = answers[question.id];
+    
+    if (question.type === 'multiple') {
+      return answer && answer.length > 0;
+    }
+    return answer !== undefined && answer !== '';
+  };
 
-      case 'slider':
-        const min = scale_min || 0;
-        const max = scale_max || 10;
-        return (
-          <div key={id} className="form-group">
-            <div className="form-label-row">
-              <label htmlFor={id} className="form-label">
-                {label}
-              </label>
-              <span className="slider-value-display">{value}</span>
-            </div>
-            <input
-              type="range"
-              id={id}
-              min={min}
-              max={max}
-              value={value}
-              onChange={(e) => onAnswerChange(id, parseInt(e.target.value))}
-              className="form-slider"
-            />
-            <div className="slider-labels">
-              <span>{min}</span>
-              <span>{max}</span>
-            </div>
-          </div>
-        );
-
-      default:
-        return (
-          <div key={id} className="form-group">
-            <label htmlFor={id} className="form-label">
-              {label}
-            </label>
-            <input
-              type="text"
-              id={id}
-              value={value}
-              onChange={(e) => onAnswerChange(id, e.target.value)}
-              placeholder={placeholder}
-              className="form-input"
-            />
-          </div>
-        );
+  const handleNext = () => {
+    if (currentQuestion < QUESTIONS.length - 1) {
+      setCurrentQuestion(prev => prev + 1);
     }
   };
 
-  if (!questions) {
-    return (
-      <div className="profile-page">
-        <div className="profile-container">
-          <div className="loading-state">Loading configuration...</div>
-        </div>
-      </div>
-    );
-  }
+  const handlePrev = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(prev => prev - 1);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await createProfile(answers);
+      navigate('/');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const question = QUESTIONS[currentQuestion];
+  const isLastQuestion = currentQuestion === QUESTIONS.length - 1;
 
   return (
     <div className="profile-page">
-      <div className="profile-header-section">
-        <div className="profile-header-content">
-          <button className="btn-back" onClick={() => navigate('/')}>
-            ← Back to Chat
-          </button>
-          <div>
-            <h1 className="profile-page-title">Profile Configuration</h1>
-            <p className="profile-page-subtitle">
-              Customize your assistant's behavior by providing context and preferences
-            </p>
-          </div>
+      <div className="profile-card">
+        <div className="progress-bar">
+          <div 
+            className="progress-fill" 
+            style={{ width: `${((currentQuestion + 1) / QUESTIONS.length) * 100}%` }}
+          />
         </div>
-      </div>
 
-      <div className="profile-container">
-        {!isValidated ? (
-          <div className="profile-card">
-            <div className="profile-card-header">
-              <h2 className="profile-card-title">Your Profile</h2>
-              <p className="profile-card-description">
-                Fill in the information below to personalize your experience
-              </p>
-            </div>
+        <h2>Question {currentQuestion + 1} / {QUESTIONS.length}</h2>
+        <p className="question-text">{question.label}</p>
 
-            <form onSubmit={handleSubmit} className="profile-form">
-              {questions.map(renderQuestionInput)}
+        <div className="options">
+          {question.options.map((option, idx) => {
+            const isSelected = question.type === 'multiple'
+              ? (answers[question.id] || []).includes(option)
+              : answers[question.id] === option;
 
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary btn-lg btn-full-width">
-                  Activate Profile
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
-          <div className="profile-card">
-            <div className="profile-card-header">
-              <div className="profile-status">
-                <span className="badge badge-success">Active Profile</span>
-              </div>
-              <h2 className="profile-card-title">Your Profile</h2>
-              <p className="profile-card-description">
-                Your profile is currently active and being used in conversations
-              </p>
-            </div>
+            return (
+              <label key={idx} className={`option ${isSelected ? 'selected' : ''}`}>
+                <input
+                  type={question.type === 'multiple' ? 'checkbox' : 'radio'}
+                  name={question.id}
+                  checked={isSelected}
+                  onChange={() => 
+                    question.type === 'multiple'
+                      ? handleMultipleAnswer(question.id, option)
+                      : handleAnswer(question.id, option)
+                  }
+                />
+                <span>{option}</span>
+              </label>
+            );
+          })}
+        </div>
 
-            <div className="profile-summary">
-              {questions.map((q) => {
-                const value = answersValidated[q.id];
-                const displayValue =
-                  value && String(value).trim() ? value : 'Not specified';
+        {error && <div className="error">{error}</div>}
 
-                return (
-                  <div key={q.id} className="summary-item">
-                    <div className="summary-label">{q.label}</div>
-                    <div className="summary-value">{displayValue}</div>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="actions">
+          <button 
+            onClick={handlePrev} 
+            disabled={currentQuestion === 0}
+            className="btn-secondary"
+          >
+            Précédent
+          </button>
 
-            <div className="profile-actions">
-              <button
-                onClick={() => {
-                  onEditProfile();
-                }}
-                className="btn btn-outline btn-full-width"
-              >
-                Edit Profile
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="btn btn-primary btn-full-width"
-              >
-                Back to Chat
-              </button>
-            </div>
-
-            <details className="profile-details">
-              <summary className="profile-details-summary">
-                View Generated Prompt
-              </summary>
-              <pre className="profile-details-content">
-                {buildPrompt('Your next message...', answersValidated)}
-              </pre>
-            </details>
-          </div>
-        )}
+          {!isLastQuestion ? (
+            <button 
+              onClick={handleNext} 
+              disabled={!canGoNext()}
+              className="btn-primary"
+            >
+              Suivant
+            </button>
+          ) : (
+            <button 
+              onClick={handleSubmit} 
+              disabled={!canGoNext() || loading}
+              className="btn-primary"
+            >
+              {loading ? 'Envoi...' : 'Activer le profil'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

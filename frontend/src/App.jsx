@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import ChatInterface from './components/ChatInterface';
 import ProfilePage from './components/ProfilePage';
-import { fetchQuestions, sendMessage } from './services/api';
+import { fetchQuestions, sendMessage, validateProfile, getProfile } from './services/api';
 import './styles/App.css';
 
-function App() {
-  const [apiBase, setApiBase] = useState(
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-  );
-
+function AppContent() {
+  const location = useLocation();
   const [questions, setQuestions] = useState(null);
   const [answersDraft, setAnswersDraft] = useState({});
   const [answersValidated, setAnswersValidated] = useState({});
@@ -21,22 +18,30 @@ function App() {
   // Charger les questions au montage
   useEffect(() => {
     loadQuestions();
-  }, [apiBase]);
+  }, []);
+
+  // Vérifier si le profil existe à chaque changement de route
+  useEffect(() => {
+    checkIfProfileExists();
+  }, [location.pathname]);
+
+  const checkIfProfileExists = async () => {
+    const profile = await getProfile();
+    if (profile) {
+      setIsValidated(true);
+    }
+  };
 
   const loadQuestions = async () => {
     try {
-      const data = await fetchQuestions(apiBase);
+      const data = await fetchQuestions();
       setQuestions(data);
 
       // Initialiser les réponses brouillon
       const initialDraft = {};
       data.forEach((q) => {
-        if (q.default !== undefined) {
-          initialDraft[q.id] = q.default;
-        } else if (q.type === 'slider') {
-          const min = q.scale_min || 0;
-          const max = q.scale_max || 10;
-          initialDraft[q.id] = Math.floor((min + max) / 2);
+        if (q.type === 'multiple') {
+          initialDraft[q.id] = [];
         } else {
           initialDraft[q.id] = '';
         }
@@ -44,30 +49,6 @@ function App() {
       setAnswersDraft(initialDraft);
     } catch (error) {
       console.error('Error loading questions:', error);
-      // Questions par défaut en cas d'erreur
-      setQuestions([
-        {
-          id: 'context',
-          type: 'textarea',
-          label: 'Project Context',
-          placeholder: 'Describe your project briefly...',
-          default: '',
-        },
-        {
-          id: 'objective',
-          type: 'text',
-          label: 'Main Objective',
-          placeholder: 'What is the main goal?',
-          default: '',
-        },
-        {
-          id: 'audience',
-          type: 'text',
-          label: 'Target Audience',
-          placeholder: 'Who is this for?',
-          default: '',
-        },
-      ]);
     }
   };
 
@@ -78,9 +59,15 @@ function App() {
     }));
   };
 
-  const handleValidateProfile = () => {
-    setAnswersValidated({ ...answersDraft });
-    setIsValidated(true);
+  const handleValidateProfile = async () => {
+    try {
+      await validateProfile(answersDraft);
+      setAnswersValidated({ ...answersDraft });
+      setIsValidated(true);
+    } catch (error) {
+      console.error('Error validating profile:', error);
+      alert('Erreur lors de la validation du profil');
+    }
   };
 
   const handleEditProfile = () => {
@@ -96,7 +83,7 @@ function App() {
     setIsLoading(true);
 
     try {
-      const reply = await sendMessage(apiBase, userMessage, answersValidated);
+      const reply = await sendMessage(userMessage);
 
       // Ajouter la réponse de l'assistant
       const assistantMsg = { role: 'assistant', content: reply };
@@ -114,42 +101,44 @@ function App() {
   };
 
   return (
-    <Router>
-      <div className="app">
-        <Header
-          apiBase={apiBase}
-          setApiBase={setApiBase}
-          isValidated={isValidated}
-        />
+    <div className="app">
+      <Header isValidated={isValidated} />
 
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ChatInterface
-                messages={messages}
-                isValidated={isValidated}
-                isLoading={isLoading}
-                onSendMessage={handleSendMessage}
-              />
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProfilePage
-                questions={questions}
-                answersDraft={answersDraft}
-                answersValidated={answersValidated}
-                isValidated={isValidated}
-                onAnswerChange={handleAnswerChange}
-                onValidateProfile={handleValidateProfile}
-                onEditProfile={handleEditProfile}
-              />
-            }
-          />
-        </Routes>
-      </div>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ChatInterface
+              messages={messages}
+              isValidated={isValidated}
+              isLoading={isLoading}
+              onSendMessage={handleSendMessage}
+            />
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProfilePage
+              questions={questions}
+              answersDraft={answersDraft}
+              answersValidated={answersValidated}
+              isValidated={isValidated}
+              onAnswerChange={handleAnswerChange}
+              onValidateProfile={handleValidateProfile}
+              onEditProfile={handleEditProfile}
+            />
+          }
+        />
+      </Routes>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

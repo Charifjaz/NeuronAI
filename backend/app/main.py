@@ -9,7 +9,7 @@ app = FastAPI(title=settings.APP_NAME)
 # CORS pour permettre l'appel depuis l'IHM Streamlit
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8501"],  # + ton domaine prod
+    allow_origins=["http://localhost:5173"],  # + ton domaine prod
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

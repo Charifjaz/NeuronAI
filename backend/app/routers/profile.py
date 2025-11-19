@@ -4,8 +4,10 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+
 from ..services.personality import infer_personality_from_answers
-from ..services.profile_store import save_user_profile
+from ..services.profile_store import save_user_profile, get_user_profile, list_user_ids
+
 
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -27,21 +29,21 @@ class Q2Option(str, Enum):
     BRUME = "Une brume qui se dissipe"
     PUZZLE = "Un puzzle où il manque encore une pièce"
     PORTE = "Une porte à franchir"
-    VAGUE = "Une vague d’idées à canaliser"
+    VAGUE = "Une vague d'idées à canaliser"
     CARTE = "Une carte avec plusieurs directions possibles"
 
 
 class Q3Option(str, Enum):
-    RELIRE = "Je relis calmement ce que j’ai déjà posé"
+    RELIRE = "Je relis calmement ce que j'ai déjà posé"
     EXEMPLE_SIMPLE = "Je cherche un exemple ou une version plus simple"
     TABLEAU = "Je mets tout à plat dans un tableau"
-    PASSER_AUTRE_CHOSE = "Je passe à autre chose puis j’y reviens"
+    PASSER_AUTRE_CHOSE = "Je passe à autre chose puis j'y reviens"
     REGARD_EXTERIEUR = "Je demande un regard extérieur"
 
 
 class Q4Option(str, Enum):
-    EXPLIQUER_SIMPLE = "Je peux l’expliquer simplement"
-    APPLIQUER_TOUT_DE_SUITE = "Je peux l’appliquer tout de suite"
+    EXPLIQUER_SIMPLE = "Je peux l'expliquer simplement"
+    APPLIQUER_TOUT_DE_SUITE = "Je peux l'appliquer tout de suite"
     VISUALISER = "Je le visualise clairement"
     RESUMER_3_POINTS = "Je peux le résumer en 3 points"
     EXEMPLE_CONCRET = "Je peux donner un exemple concret"
@@ -49,11 +51,11 @@ class Q4Option(str, Enum):
 
 
 class Q5Option(str, Enum):
-    ESSENTIEL = "Avoir l’essentiel tout de suite"
+    ESSENTIEL = "Avoir l'essentiel tout de suite"
     PAS_A_PAS = "Un pas-à-pas avec exemples concrets"
     COMPLET_LOGIQUE = "Une explication complète avec la logique et les détails"
     ANALOGIE = "Une analogie / une image qui parle"
-    ADAPTATIF = "Une version qui s’adapte selon ce que tu demandes"
+    ADAPTATIF = "Une version qui s'adapte selon ce que tu demandes"
 
 
 class Q6Option(str, Enum):
@@ -61,14 +63,14 @@ class Q6Option(str, Enum):
     IMPROVISER = "Improviser et voir ce qui émerge"
     TESTER_AJUSTER = "Tester, observer, ajuster"
     LAISSER_DECLIC = "Laisser venir le déclic"
-    CHERCHER_LOGIQUE = "Chercher d’abord la logique sous-jacente"
+    CHERCHER_LOGIQUE = "Chercher d'abord la logique sous-jacente"
 
 
 class Q7Option(str, Enum):
     VISUALISER_CONCRET = "En visualisant comment les choses se passent concrètement"
     ECRIRE_DESSINER = "En écrivant ou dessinant les idées"
-    PARLER_EXPLIQUER = "En en parlant pour l’expliquer"
-    OBSERVER = "En observant attentivement jusqu’à ce que tout prenne sens"
+    PARLER_EXPLIQUER = "En en parlant pour l'expliquer"
+    OBSERVER = "En observant attentivement jusqu'à ce que tout prenne sens"
     CHERCHER_LOGIQUE = "En cherchant la logique qui relie tout"
 
 
@@ -85,7 +87,7 @@ class ProfileRequest(BaseModel):
     Q1: Q1Option = Field(
         ...,
         description=(
-            "Q1. Quand tu réfléchis à quelque chose d’important, qu’est-ce qui t’aide le plus à y voir clair ?"
+            "Q1. Quand tu réfléchis à quelque chose d'important, qu'est-ce qui t'aide le plus à y voir clair ?"
         ),
     )
     Q2: Q2Option = Field(
@@ -103,19 +105,19 @@ class ProfileRequest(BaseModel):
     Q4: List[Q4Option] = Field(
         ...,
         description=(
-            "Q4. Quand tu comprends quelque chose en profondeur, qu’est-ce qui te le montre ? (plusieurs choix possibles)"
+            "Q4. Quand tu comprends quelque chose en profondeur, qu'est-ce qui te le montre ? (plusieurs choix possibles)"
         ),
     )
     Q5: Q5Option = Field(
         ...,
         description=(
-            "Q5. Quand on t’explique quelque chose, tu préfères plutôt…"
+            "Q5. Quand on t'explique quelque chose, tu préfères plutôt…"
         ),
     )
     Q6: Q6Option = Field(
         ...,
         description=(
-            "Q6. Devant une situation qui demande un peu de réflexion, ton réflexe naturel, c’est plutôt…"
+            "Q6. Devant une situation qui demande un peu de réflexion, ton réflexe naturel, c'est plutôt…"
         ),
     )
     Q7: Q7Option = Field(
@@ -139,7 +141,7 @@ async def create_profile(body: ProfileRequest):
     """
     Endpoint profil :
     - Reçoit toujours les mêmes questions Q1..Q7
-    - Chaque question a un set d’options fixes (Enum)
+    - Chaque question a un set d'options fixes (Enum)
     - Renvoie un texte de personnalité à partir de ces réponses
     """
     answers: Dict[str, Any] = {
@@ -162,12 +164,19 @@ async def create_profile(body: ProfileRequest):
 
 # app/routers/profile.py afin de vérifier le user_id du profile
 
-from fastapi import HTTPException
-from ..services.profile_store import get_user_profile
-
-@router.get("/{user_id}", summary="Récupérer le profil de personnalité d’un utilisateur")
+@router.get("/{user_id}", summary="Récupérer le profil de personnalité d'un utilisateur")
 async def get_profile(user_id: str):
     personality = get_user_profile(user_id)
     if personality is None:
         raise HTTPException(status_code=404, detail="Profil introuvable pour cet user_id")
     return {"user_id": user_id, "personality": personality}
+
+
+@router.get(
+    "/users/list",
+    summary="Lister tous les user_id pour lesquels un profil a été créé"
+)
+async def list_profiles_users():
+    user_ids = list_user_ids()
+    return {"user_ids": user_ids}
+
