@@ -1,31 +1,29 @@
 import { useNavigate } from 'react-router-dom';
 
-function Header({ apiBase, setApiBase, isValidated }) {
+function Header({ isValidated }) {
   const navigate = useNavigate();
 
   return (
     <header className="header">
       <div className="header-content">
         <div className="header-brand">
-          <div className="header-logo">N</div>
+          <div className="brand-icon">N</div>
           <div>
-            <div className="header-title">Neural Assistant</div>
-            <div className="header-subtitle">
-              Intelligent conversational interface
-            </div>
+            <h1 className="brand-title">Neural Assistant</h1>
+            <p className="brand-subtitle">Intelligent conversational interface</p>
           </div>
         </div>
 
         <div className="header-actions">
           {isValidated && (
-            <span className="badge badge-success">Active</span>
+            <span className="badge-active">✓ Profile Active</span>
           )}
           
           <button
             className="btn-profile"
             onClick={() => navigate('/profile')}
           >
-            Configure Profile
+            {isValidated ? 'Edit Profile' : 'Configure Profile'}
           </button>
         </div>
       </div>
