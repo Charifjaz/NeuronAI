@@ -22,9 +22,9 @@ services:
     networks:
       - neuronai-network
 
-networks:
-  neuronai-network:
-    driver: bridge
+# networks:
+#   neuronai-network:
+#     driver: bridge
 
 
   # frontend:
