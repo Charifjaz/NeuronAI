@@ -1,10 +1,14 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .database.db import engine, Base
+from .database.models import UserProfile  # IMPORTANT: pour que UserProfile soit importé
 from .core.settings import settings
 from .routers import health, chat, profile
 
 app = FastAPI(title=settings.APP_NAME)
+Base.metadata.create_all(bind=engine)
+
 
 # CORS pour permettre l'appel depuis l'IHM Streamlit
 app.add_middleware(

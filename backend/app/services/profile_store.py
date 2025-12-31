@@ -1,25 +1,51 @@
-# app/services/profile_store.py
-from typing import Dict, Optional
+from typing import Optional, List
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-# Simple stockage en mémoire : user_id -> personality_text
-_USER_PROFILES: Dict[str, str] = {}
+from app.database.db import SessionLocal
+from app.database.models import UserProfile
 
 
-def save_user_profile(user_id: str, personality: str) -> None:
+def save_user_profile(user_id: str, personality: str, db : Session) -> None:
     """
-    Enregistre ou met à jour le profil de personnalité pour un user_id donné.
+    Crée ou met à jour un profil utilisateur.
     """
-    _USER_PROFILES[user_id] = personality
+    # On cherche si un profil existe déjà pour cet user_id
+    stmt = select(UserProfile).where(UserProfile.user_id == user_id)
+    result = db.execute(stmt)
+    user_profile = result.scalar_one_or_none()
+
+    if user_profile is None:
+        # Pas de profil : on en crée un
+        user_profile = UserProfile(
+            user_id=user_id,
+            personality=personality,
+        )
+        db.add(user_profile)
+    else:
+        # Profil existe : on le met à jour
+        user_profile.personality = personality
+
+    # Validation (commit) des changements en base
+    db.commit()
 
 
-def get_user_profile(user_id: str) -> Optional[str]:
+def get_user_profile(user_id: str, db : Session) -> Optional[UserProfile]:
     """
     Récupère le profil de personnalité associé à ce user_id, s'il existe.
+    Retourne le texte de personnalité ou None.
     """
-    return _USER_PROFILES.get(user_id)
+    stmt = select(UserProfile.personality).where(UserProfile.user_id == user_id)
+    result = db.execute(stmt)
+    personality = result.scalar_one_or_none()
+    return personality
 
-def list_user_ids() -> list[str]:
+
+def list_user_ids(db : Session) -> List[str]:
     """
     Renvoie la liste de tous les user_id pour lesquels un profil existe.
     """
-    return list(_USER_PROFILES.keys())
+    stmt = select(UserProfile.user_id)
+    result = db.execute(stmt)
+    user_ids = [row[0] for row in result.all()]
+    return user_ids

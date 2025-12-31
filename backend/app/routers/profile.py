@@ -1,8 +1,16 @@
 from enum import Enum
 from typing import List, Dict, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
+
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
+from ..database.db import SessionLocal
+from ..database.models import UserProfile
+from ..database.db import SessionLocal
+
 
 
 from ..services.personality import infer_personality_from_answers
@@ -136,8 +144,20 @@ class ProfileResponse(BaseModel):
 #  ENDPOINT PRINCIPAL
 # ==========================
 
+def get_db():
+    """
+    Fournit une session de base de données pour la durée de la requête.
+    FastAPI appelle cette fonction, et s'occupe de la fermer après.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @router.post("", response_model=ProfileResponse)
-async def create_profile(body: ProfileRequest):
+async def create_profile(body: ProfileRequest, db: Session = Depends(get_db)):
     """
     Endpoint profil :
     - Reçoit toujours les mêmes questions Q1..Q7
@@ -157,26 +177,39 @@ async def create_profile(body: ProfileRequest):
     personality = infer_personality_from_answers(answers)
 
     # On stocke la personnalité pour ce user_id en mémoire
-    save_user_profile(body.user_id, personality)
+    save_user_profile(body.user_id, personality, db)
 
     return ProfileResponse(personality=personality)
 
 
-# app/routers/profile.py afin de vérifier le user_id du profile
+@router.get(
+    "/{user_id}",
+    summary="Récupérer le profil de personnalité d'un utilisateur",
+)
+async def get_profile(
+    user_id: str,
+    db: Session = Depends(get_db),
+):
+    if not user_id.strip():
+        raise HTTPException(status_code=400, detail="user_id invalide")
 
-@router.get("/{user_id}", summary="Récupérer le profil de personnalité d'un utilisateur")
-async def get_profile(user_id: str):
-    personality = get_user_profile(user_id)
-    if personality is None:
+    user_profile = get_user_profile(user_id, db=db)
+
+    if user_profile is None:
         raise HTTPException(status_code=404, detail="Profil introuvable pour cet user_id")
-    return {"user_id": user_id, "personality": personality}
+
+    return {
+        "user_id": user_profile.user_id,
+        "personality": user_profile.personality,
+    }
 
 
 @router.get(
     "/users/list",
-    summary="Lister tous les user_id pour lesquels un profil a été créé"
+    summary="Lister tous les user_id pour lesquels un profil a été créé",
 )
-async def list_profiles_users():
-    user_ids = list_user_ids()
+async def list_profiles_users(
+    db: Session = Depends(get_db),
+):
+    user_ids = list_user_ids(db=db)
     return {"user_ids": user_ids}
-
