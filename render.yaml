@@ -2,24 +2,23 @@ services:
   # Backend
   - type: web
     name: psy-profile-backend
-    runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    env: docker
+    region: frankfurt  # ou oregon, singapore selon ta localisation
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
-    
-  # Frontend
+      - key: PORT
+        value: 8000
+
+  # Frontend  
   - type: web
     name: psy-profile-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: build
+    env: docker
+    region: frankfurt
+    dockerfilePath: frontend/Dockerfile
+    dockerContext: frontend
     envVars:
       - key: REACT_APP_API_URL
-        fromService:
-          type: web
-          name: psy-profile-backend
-          property: host
+        value: https://psy-profile-backend.onrender.com
