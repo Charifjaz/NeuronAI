@@ -1,24 +1,39 @@
-services:
-  # Backend
-  - type: web
-    name: psy-profile-backend
-    env: docker
-    region: frankfurt  # ou oregon, singapore selon ta localisation
-    dockerfilePath: backend/Dockerfile
-    dockerContext: backend
-    envVars:
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: PORT
-        value: 8000
+version: "1"
 
-  # Frontend  
-  - type: web
-    name: psy-profile-frontend
-    env: docker
-    region: frankfurt
-    dockerfilePath: frontend/Dockerfile
-    dockerContext: frontend
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://psy-profile-backend.onrender.com
+projects:
+  - name: psy-profile-api
+    environments:
+      - name: Production
+        services:
+          # Backend API
+          - type: web
+            name: psy-profile-backend
+            runtime: docker
+            repo: https://github.com/Charifjaz/NeuronAI
+            branch: adding_database  # ou main/master selon ta branche
+            plan: free
+            region: oregon
+            dockerContext: ./backend
+            dockerfilePath: ./backend/Dockerfile
+            autoDeployTrigger: commit
+            envVars:
+              - key: ANTHROPIC_API_KEY
+                sync: false
+              - key: PORT
+                value: 8000
+            healthCheckPath: /health
+
+          # Frontend React
+          - type: web
+            name: psy-profile-frontend
+            runtime: docker
+            repo: https://github.com/Charifjaz/NeuronAI
+            branch: adding_database
+            plan: free
+            region: oregon
+            dockerContext: ./frontend
+            dockerfilePath: ./frontend/Dockerfile
+            autoDeployTrigger: commit
+            envVars:
+              - key: REACT_APP_API_URL
+                value: https://psy-profile-backend.onrender.com
