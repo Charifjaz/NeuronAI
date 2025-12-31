@@ -207,6 +207,7 @@ async def get_profile(
 @router.get(
     "/users/list",
     summary="Lister tous les user_id pour lesquels un profil a été créé",
+    response_model_exclude_unset=True,
 )
 async def list_profiles_users(
     db: Session = Depends(get_db),

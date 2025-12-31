@@ -35,11 +35,10 @@ def get_user_profile(user_id: str, db : Session) -> Optional[UserProfile]:
     Récupère le profil de personnalité associé à ce user_id, s'il existe.
     Retourne le texte de personnalité ou None.
     """
-    stmt = select(UserProfile.personality).where(UserProfile.user_id == user_id)
+    stmt = select(UserProfile).where(UserProfile.user_id == user_id)  # Select l'objet complet
     result = db.execute(stmt)
-    personality = result.scalar_one_or_none()
-    return personality
-
+    user_profile = result.scalar_one_or_none()  # Récupère l'objet UserProfile
+    return user_profile  # Retourne l'objet complet
 
 def list_user_ids(db : Session) -> List[str]:
     """

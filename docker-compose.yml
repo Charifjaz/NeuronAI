@@ -24,7 +24,7 @@ services:
       - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
-      interval: 10s
+      interval: 3600s
       timeout: 3s
       retries: 5
     depends_on:
@@ -32,15 +32,15 @@ services:
     networks:
       - neuronai-network
 
-  # frontend:
-  #   build: ./frontend
-  #   container_name: neuronai-front
-  #   ports:
-  #     - "3000:80"
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - neuronai-network
+  frontend:
+    build: ./frontend
+    container_name: neuronai-front
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - neuronai-network
 
 networks:
   neuronai-network:
