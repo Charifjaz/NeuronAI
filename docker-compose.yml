@@ -12,31 +12,37 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - neuronai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuronai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
     container_name: neuronai-back
     env_file:
       - ./backend/.env
-    # IMPORTANT : dans ton .env, mets un host "db", ex :
-    # DATABASE_URL=postgresql://neuronai:neuronai@db:5432/neuronai
     ports:
       - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
-      interval: 3600s
+      interval: 30s
       timeout: 3s
       retries: 5
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - neuronai-network
 
   frontend:
     build: ./frontend
     container_name: neuronai-front
+    environment:
+      - API_BASE_URL=http://backend:8000
     ports:
-      - "3000:80"
+      - "8501:8501"
     depends_on:
       - backend
     networks:
